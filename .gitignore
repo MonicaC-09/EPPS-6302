@@ -8,3 +8,6 @@ client_secret_*.json
 YouTubeAPI01.R
 YouTubenews01.R
 client_secret_*.json
+.RDataTmp
+.RData
+.Rhistory
