@@ -1,0 +1,359 @@
+---
+title: "Assignment4"
+author: "Monica Campos"
+---
+
+Part A: Modified the Web Scraping Program
+
+Tools used: R and the packages rvest, tidyverse, stringr, scales
+
+**Data Source**: [\[Wikipedia - List of countries by GDP (nominal)\]](https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal))
+
+-   Changed the original starter code: Foreign Exchange Reserves to GDP (nominal) data from Wikipedia
+
+    -   Modified XPath selector through the Developer tools to target GDP table and updated column names to reflect the GDP data sources (IMF, World Bank, UN), and successfully scraped 230+ countries/territories
+
+```{r}
+#| label: Part A
+#| echo: true
+# Load required packages
+library(tidyverse)
+library(rvest)
+library(stringr)
+
+# =============================================================================
+# PART A: Scrape GDP (nominal) table from Wikipedia
+# =============================================================================
+
+url <- 'https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)'
+
+# Read the HTML code from Wikipedia
+wiki_gdp <- read_html(url)
+cat("Successfully read HTML. Object class:", class(wiki_gdp), "\n")
+
+# Extract the GDP table using XPath
+# The table is the second sortable table on the page
+gdp_table <- wiki_gdp %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div[1]/table[2]') %>%
+  html_table(fill = TRUE)
+
+cat("Table extracted. Object class:", class(gdp_table), "\n")
+
+# Extract the dataframe from the list
+gdp_df <- gdp_table[[1]]
+
+# Assign meaningful column names
+names(gdp_df) <- c("Country.Territory", "IMF.2025..1..6.", "World.Bank.2022.24..7.", "United.Nations.2023..8.")
+
+cat("\nColumn names:", paste(colnames(gdp_df), collapse = ", "), "\n")
+cat("\nFirst 10 countries:\n")
+print(head(gdp_df$Country.Territory, n=10))
+```
+
+**PART B: Clean up the dataframe**
+
+-   I attempted to clean and stripped all \[1\], \[2\], etc. reference brackets using regex "\\\\" and "\[.\*?\\\\\]" but I do not think it worked correctly, I even try to get help from Copilot but it was unsuccessful at helping me removed them.
+
+-   in B(ii), I successfully filtered the "World" aggregate row, handled the "NA" strings to proper R NA values, changed GDP columns from character to numeric, stripped commas from large numbers befire conversation
+
+```{r}
+#| label: Part B
+#| echo: true
+# =============================================================================
+# PART B: Clean up the dataframe
+# =============================================================================
+
+## B(i): Clean up variables - Remove citation brackets and trim whitespace
+cat("\n=== Cleaning Data ===\n")
+
+gdp_clean <- gdp_df %>%
+  # Remove citation brackets like [1], [2], etc.
+  mutate(across(everything(), ~str_remove_all(., "\\[.*?\\]"))) %>%
+  # Remove any extra whitespace
+  mutate(across(everything(), trimws))
+
+## B(ii): Remove unneeded rows and columns
+
+# Identify and remove summary rows (World, rows with "—" as separators, etc.)
+# The first row is typically "World" which is a summary
+gdp_clean <- gdp_clean %>%
+  filter(Country.Territory != "World") %>%
+  filter(Country.Territory != "") %>%
+  filter(!str_detect(Country.Territory, "^—"))
+
+# Convert GDP columns from character to numeric
+# First replace "NA" strings with actual NA, remove commas
+gdp_clean <- gdp_clean %>%
+  mutate(
+    IMF.2025..1..6. = ifelse(IMF.2025..1..6. == "NA" | IMF.2025..1..6. == "", NA, IMF.2025..1..6.),
+    World.Bank.2022.24..7. = ifelse(World.Bank.2022.24..7. == "NA" | World.Bank.2022.24..7. == "", NA, World.Bank.2022.24..7.),
+    United.Nations.2023..8. = ifelse(United.Nations.2023..8. == "NA" | United.Nations.2023..8. == "", NA, United.Nations.2023..8.)
+  ) %>%
+  mutate(
+    IMF.2025..1..6. = as.numeric(str_remove_all(IMF.2025..1..6., ",")),
+    World.Bank.2022.24..7. = as.numeric(str_remove_all(World.Bank.2022.24..7., ",")),
+    United.Nations.2023..8. = as.numeric(str_remove_all(United.Nations.2023..8., ","))
+  )
+
+# Display summary statistics
+cat("\nDataframe dimensions after cleaning:", nrow(gdp_clean), "rows x", ncol(gdp_clean), "columns\n")
+cat("\nSummary of cleaned data:\n")
+print(summary(gdp_clean))
+
+# Check for missing values
+cat("\nMissing values by column:\n")
+print(colSums(is.na(gdp_clean)))
+
+# Display first few rows of cleaned data
+cat("\nFirst 10 rows of cleaned data:\n")
+print(head(gdp_clean, n=10))
+
+# Save cleaned data to CSV
+write.csv(gdp_clean, "gdp_nominal_clean.csv", row.names = FALSE)
+cat("\nCleaned data saved to 'gdp_nominal_clean.csv'\n")
+
+# =============================================================================
+# Additional Analysis: Top 10 Countries by GDP
+# =============================================================================
+
+cat("\n=== Top 10 Countries by GDP (IMF 2025) ===\n")
+top10 <- gdp_clean %>%
+  arrange(desc(IMF.2025..1..6.)) %>%
+  head(10) %>%
+  select(Country.Territory, IMF.2025..1..6.)
+
+print(top10)
+```
+
+```{r}
+library(scales)
+
+# =============================================================================
+# Load the cleaned data
+# =============================================================================
+
+gdp_data <- read.csv("gdp_clean.csv")
+head(gdp_data)
+
+cat("=== DATA SUMMARY ===\n")
+cat("Total countries/territories:", nrow(gdp_data), "\n")
+cat("Columns:", paste(names(gdp_data), collapse=", "), "\n\n")
+
+# =============================================================================
+# Data Quality Assessment
+# =============================================================================
+
+cat("=== DATA QUALITY ASSESSMENT ===\n\n")
+
+# Check missing values by column
+missing_summary <- gdp_data %>%
+  summarise(
+    Total_Records = n(),
+    IMF_Missing = sum(is.na(IMF.2025..1..6.)),
+    WorldBank_Missing = sum(is.na(World.Bank.2022.24..7.)),
+    UN_Missing = sum(is.na(United.Nations.2023..8.)),
+    IMF_Pct_Complete = round((1 - sum(is.na(IMF.2025..1..6.))/n()) * 100, 1),
+    WorldBank_Pct_Complete = round((1 - sum(is.na(World.Bank.2022.24..7.))/n()) * 100, 1),
+    UN_Pct_Complete = round((1 - sum(is.na(United.Nations.2023..8.))/n()) * 100, 1)
+  )
+
+print(missing_summary)
+
+# Countries with complete data across all three sources
+complete_data <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.) & !is.na(World.Bank.2022.24..7.) & !is.na(United.Nations.2023..8.))
+
+cat("\nCountries with complete data (all 3 sources):", nrow(complete_data), "\n")
+
+# Countries with missing data
+missing_data <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.) & !is.na(World.Bank.2022.24..7.) & !is.na(United.Nations.2023..8.)) %>%
+  select(Country.Territory, IMF.2025..1..6., World.Bank.2022.24..7., United.Nations.2023..8.)
+
+cat("\nCountries with at least one missing value:", nrow(missing_data), "\n")
+cat("\nExamples of countries with missing data:\n")
+print(head(missing_data, 10))
+```
+
+```{r}
+# =============================================================================
+# Descriptive Statistics
+# =============================================================================
+
+cat("\n=== DESCRIPTIVE STATISTICS (in millions USD) ===\n\n")
+
+stats_summary <- gdp_data %>%
+  summarise(
+    Source = c("IMF 2025", "World Bank 2022-24", "UN 2023"),
+    Mean = c(mean(IMF.2025..1..6., na.rm=TRUE), 
+             mean(World.Bank.2022.24..7., na.rm=TRUE), 
+             mean(United.Nations.2023..8., na.rm=TRUE)),
+    Median = c(median(IMF.2025..1..6., na.rm=TRUE), 
+               median(World.Bank.2022.24..7., na.rm=TRUE), 
+               median(United.Nations.2023..8., na.rm=TRUE)),
+    SD = c(sd(IMF.2025..1..6., na.rm=TRUE), 
+           sd(World.Bank.2022.24..7., na.rm=TRUE), 
+           sd(United.Nations.2023..8., na.rm=TRUE)),
+    Min = c(min(IMF.2025..1..6., na.rm=TRUE), 
+            min(World.Bank.2022.24..7., na.rm=TRUE), 
+            min(United.Nations.2023..8., na.rm=TRUE)),
+    Max = c(max(IMF.2025..1..6., na.rm=TRUE), 
+            max(World.Bank.2022.24..7., na.rm=TRUE), 
+            max(United.Nations.2023..8., na.rm=TRUE))
+  )
+
+print(stats_summary)
+
+# =============================================================================
+# Top 20 Economies by IMF 2025
+# =============================================================================
+
+cat("\n=== TOP 20 ECONOMIES (IMF 2025 estimates) ===\n\n")
+
+top20 <- gdp_data %>%
+  arrange(desc(IMF.2025..1..6.)) %>%
+  head(20) %>%
+  mutate(Rank = row_number(),
+         GDP_Trillions = round(IMF.2025..1..6. / 1000000, 2)) %>%
+  select(Rank, Country.Territory, GDP_Trillions, IMF.2025..1..6., World.Bank.2022.24..7., United.Nations.2023..8.)
+
+print(top20)
+```
+
+```{r}
+# =============================================================================
+# Comparison of Data Sources
+# =============================================================================
+
+cat("\n=== COMPARISON ACROSS DATA SOURCES ===\n\n")
+
+# Calculate correlation between sources
+comparison <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.) & !is.na(World.Bank.2022.24..7.) & !is.na(United.Nations.2023..8.))
+
+cat("Correlation between data sources (for countries with complete data):\n")
+cat("IMF vs World Bank:", round(cor(comparison$IMF.2025..1..6., comparison$World.Bank.2022.24..7.), 4), "\n")
+cat("IMF vs UN:", round(cor(comparison$IMF.2025..1..6., comparison$United.Nations.2023..8.), 4), "\n")
+cat("World Bank vs UN:", round(cor(comparison$World.Bank.2022.24..7., comparison$United.Nations.2023..8.), 4), "\n")
+
+# Find countries with largest discrepancies between sources
+discrepancies <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.) & !is.na(World.Bank.2022.24..7.) & !is.na(United.Nations.2023..8.)) %>%
+  mutate(
+    IMF_WB_Diff = abs(IMF.2025..1..6. - World.Bank.2022.24..7.),
+    IMF_UN_Diff = abs(IMF.2025..1..6. - United.Nations.2023..8.),
+    WB_UN_Diff = abs(World.Bank.2022.24..7. - United.Nations.2023..8.),
+    Max_Diff = pmax(IMF_WB_Diff, IMF_UN_Diff, WB_UN_Diff),
+    Avg_GDP = (IMF.2025..1..6. + World.Bank.2022.24..7. + United.Nations.2023..8.) / 3,
+    Pct_Diff = round((Max_Diff / Avg_GDP) * 100, 2)
+  ) %>%
+  arrange(desc(Max_Diff)) %>%
+  select(Country.Territory, IMF.2025..1..6., World.Bank.2022.24..7., United.Nations.2023..8., Max_Diff, Pct_Diff)
+
+cat("\n\nCountries with largest absolute discrepancies between sources:\n")
+print(head(discrepancies, 10))
+
+# =============================================================================
+# Regional/Size Analysis
+# =============================================================================
+
+cat("\n=== DISTRIBUTION ANALYSIS ===\n\n")
+
+# Classify economies by size (IMF 2025)
+gdp_classified <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.)) %>%
+  mutate(
+    Economy_Size = case_when(
+      IMF.2025..1..6. >= 5000000 ~ "Large (>$5T)",
+      IMF.2025..1..6. >= 1000000 ~ "Upper-Middle ($1T-$5T)",
+      IMF.2025..1..6. >= 100000 ~ "Lower-Middle ($100B-$1T)",
+      TRUE ~ "Small (<$100B)"
+    )
+  ) %>%
+  group_by(Economy_Size) %>%
+  summarise(
+    Count = n(),
+    Total_GDP = sum(IMF.2025..1..6., na.rm=TRUE),
+    Avg_GDP = round(mean(IMF.2025..1..6., na.rm=TRUE), 0),
+    Median_GDP = round(median(IMF.2025..1..6., na.rm=TRUE), 0)
+  ) %>%
+  arrange(desc(Total_GDP))
+
+print(gdp_classified)
+
+# =============================================================================
+# Global GDP Concentration
+# =============================================================================
+
+cat("\n=== GDP CONCENTRATION ANALYSIS ===\n\n")
+
+gdp_ranked <- gdp_data %>%
+  filter(!is.na(IMF.2025..1..6.)) %>%
+  arrange(desc(IMF.2025..1..6.)) %>%
+  mutate(
+    Rank = row_number(),
+    Cumulative_GDP = cumsum(IMF.2025..1..6.),
+    Total_World_GDP = sum(IMF.2025..1..6., na.rm=TRUE),
+    Cumulative_Pct = round((Cumulative_GDP / Total_World_GDP) * 100, 2)
+  )
+
+cat("Top 10 countries account for:", 
+    gdp_ranked$Cumulative_Pct[10], "% of world GDP\n")
+cat("Top 20 countries account for:", 
+    gdp_ranked$Cumulative_Pct[20], "% of world GDP\n")
+cat("Top 50 countries account for:", 
+    gdp_ranked$Cumulative_Pct[50], "% of world GDP\n")
+
+# =============================================================================
+# Export Enhanced Dataset
+# =============================================================================
+
+# Create enhanced dataset with rankings and additional metrics
+gdp_enhanced <- gdp_data %>%
+  mutate(
+    IMF_Rank = rank(-IMF.2025..1..6., na.last="keep"),
+    WB_Rank = rank(-World.Bank.2022.24..7., na.last="keep"),
+    UN_Rank = rank(-United.Nations.2023..8., na.last="keep"),
+    # Average GDP across available sources
+    Avg_GDP = rowMeans(select(., IMF.2025..1..6., World.Bank.2022.24..7., United.Nations.2023..8.), 
+                       na.rm=TRUE),
+    # Count of available data sources
+    Sources_Available = rowSums(!is.na(select(., IMF.2025..1..6., World.Bank.2022.24..7., United.Nations.2023..8.)))
+  ) %>%
+  arrange(desc(IMF.2025..1..6.))
+
+write.csv(gdp_enhanced, "gdp_enhanced_analysis.csv", row.names=FALSE)
+
+cat("\n=== Analysis Complete ===\n")
+cat("Enhanced dataset saved to 'gdp_enhanced_analysis.csv'\n")
+cat("This includes rankings, averages, and data completeness metrics.\n")
+
+```
+
+Part C: Data Collection Plan
+
+A good data collection plan ensures your web scraping is legal, reliable, and reproducible. Here's my approach and the key principles to considered when doing Web Scraping Research is:
+
+1.  Legal & Ethical Compliance
+
+Before Scraping, the first is to plan the needed data, where to find it, and if scraping is allowed, we can do this through the robots.txt and Terms of Service, and how often the data is updated, and cite the source properly.
+
+2.  Data Quality Assurance
+
+    After scraping the quality of the data must be assurance through multiple ways which are run automatically through the code, easily creates professional tables, real validation of the data, and shows data quality that the scraping worked correctly:
+
+    i\. Basic Validation Checks: Row Count Verification, Column completeness, Realistic values, No duplicates, Missing data count, Correct Data Count.
+
+    ii\. Cross-Source Validation: to calculate the correlations between three key variables, to show how well the variables agree, prove data reliability for a correlation \>0.99.
+
+    iii\. Outlier Detection: identifies countries with \>10% different between sources, Flags potential data quality issues, and shows which countries need closer examinations
+
+    iv\. Reasonableness Checks: for descriptive statistics, confirms valies, and no negative or large values
+
+    v\. Data Completeness Analysis: shows how many the subject of the data have all sources, categorizing for complete, mostly complete, limited, none, percentage breakdown
+
+    vi\. Missing Data Patterns: Examples of the data subject with missing values, to help explain why there is data missing
+
+3.  Best Practices
+
+For example, in my case Wikipedia allows for scraping for research purposes, I only made one requests for the GDP data, I did not made bulk requests for hundreds of pages, I believed it is cited properly. I did used Xpath, which can be found through the developer tools, to target the table and added error handling and quality checks the code to have for the right number of rows and columns.

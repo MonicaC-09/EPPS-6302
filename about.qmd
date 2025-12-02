@@ -1,0 +1,5 @@
+---
+title: "About"
+---
+
+This Quarto project is my personal website, designed to serve as hub for my academic work from EPPS 6302: Methods of Data Collection and Production. It's primary purpose is to organize and present content related to the current course and my group project. The website is configured to provide a clean, modern, and user-friendly experience, with a clear navigation structure.

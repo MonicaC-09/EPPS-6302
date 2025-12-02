@@ -1,0 +1,241 @@
+---
+title: "Assignment 5: Government Data API"
+author: "Monica Campos"
+---
+
+```{r}
+#| label: Scraping Government data Foreign Relations Committee
+#| echo: true
+## Scraping Government data
+## Website: GovInfo (https://www.govinfo.gov/app/search/)
+## Prerequisite: Download from website the list of files to be downloaded
+## Designed for background job
+
+# Start with a clean plate and lean loading to save memory
+
+gc(reset=T)
+library(purrr)
+library(magrittr) # Alternatively, load tidyverse
+
+## Set path for reading the listing and home directory
+## For Windows, use "c:\\directory\\subdirectory\\"
+## For Mac, "/Users/YOURNAME/path/"
+
+setwd("/Users/monicacampos/Library/CloudStorage/OneDrive-TheUniversityofTexasatDallas/Github Website")
+library(rjson)
+library(jsonlite)
+library(data.table)
+library(readr)
+
+## JSON method
+### rjson
+gf_list <- rjson::fromJSON(file ="govinfo-search-results-2025-10-16T17_44_21.json")
+govfile2=dplyr::bind_rows(gf_list$resultSet)
+
+
+### Extract the list
+govfiles3 <- gf_list$resultSet
+
+### One more step
+govfiles3 <- gf_list$resultSet |> dplyr::bind_rows()
+
+
+# Preparing for bulk download of government documents
+govfiles3$id = govfiles3$packageId
+pdf_govfiles_url <- govfiles3$pdfLink
+pdf_govfiles_id <- govfiles3$index
+
+valid_indices <- !is.na(pdf_govfiles_url) & pdf_govfiles_url != ""
+pdf_govfiles_url <- pdf_govfiles_url[valid_indices]
+pdf_govfiles_id <- pdf_govfiles_id[valid_indices]
+
+message(sprintf("Found %d valid PDF links to download", length(pdf_govfiles_url)))
+
+
+# Directory to save the pdf's
+# Be sure to create a folder for storing the pdf's
+save_dir <- "/Users/monicacampos/Library/CloudStorage/OneDrive-TheUniversityofTexasatDallas/Github Website"
+
+# Function to download pdfs
+download_govfiles_pdf <- function(url, id) {
+  tryCatch({
+    destfile <- paste0(save_dir, "govfiles_", id, ".pdf")
+    download.file(url, destfile = destfile, mode = "wb") # Binary files
+    Sys.sleep(runif(1, 1, 3))  # Important: random sleep between 1 and 3 seconds to avoid suspicion of "hacking" the server
+    return(paste("Successfully downloaded:", url))
+  },
+  error = function(e) {
+    return(paste("Failed to download:", url))
+  })
+}
+
+# Download files, potentially in parallel for speed
+# Simple timer, can use package like tictoc
+# 
+
+## Try downloading one document
+start.time <- Sys.time()
+message("Starting downloads")
+results <- 1:1 %>% 
+  purrr::map_chr(~ download_govfiles_pdf(pdf_govfiles_url[.], pdf_govfiles_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+## Try five
+start.time <- Sys.time()
+message("Starting downloads")
+results <- 1:5 %>% 
+  purrr::map_chr(~ download_govfiles_pdf(pdf_govfiles_url[.], pdf_govfiles_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+
+# Try ten
+
+start.time <- Sys.time()
+message("Starting downloads")
+tenresults <- 1:10 %>% 
+  purrr::map_chr(~ download_govfiles_pdf(pdf_govfiles_url[.], pdf_govfiles_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+# Print results
+print(tenresults)
+```
+
+Difficulties encountered in scrapping the data:
+
+\(1\) Inefficient Download Process: I had sequential downloading which resulted in mandatory 1-3 seconds delay for approximately 25 minutes for 722 files. I did not have anything to previously download files to keep from redundant downloads and wasted bandwidth. When I ran the code, the same files were downloaded multiple times (file #1 downloaded 3 separate times)
+
+\(2\) Limited Error Recovery: I do not know a way to track progress which makes it impossible to monitor long-running downloads. The absence of resume capability means interruptions require starting from scratch. Non-specific error message because it only shows "filed to download" without diagnostic details.
+
+\(3\) File Management Issues: The file path concatenation error creates malformed file names that could overwrite each other. There needs to be further or more advanced file size validation. Finally, I had limited future analysis because the metadata from JSON source is not preserved alongside PDFs.
+
+Data Usability Assessment: The overall usability is moderate, files are accessible, but there is still some limitations to be able to have more contextual information for systematic analysis.
+
+-   Successfully retrieved 722 valid PDF links from official government source.
+
+-   All test downloads (10/10) completed without errors.
+
+-   Data source (govinfo.gov) is authoritative and reliable.
+
+-   File naming convention captures unique identifiers for tracking.
+
+Recommended Improvements:
+
+1.  Fix file path constructing using `file.path()` to prevent naming errors.
+2.  Implement existence checking to skip already-downloaded files.
+3.  Export metadata CSV before downloading to preserve document context.
+4.  Add progress bar using `progress` package for visibility.
+5.  Enable parallel processing to reduce total by \~75%
+6.  Create structured download log capturing success/failure status, time stamps, and error messages
+7.  Implement resume functionality to continue from last successful downloads
+
+```{r}
+#| label: Exercise Foreign Affairs Committee Data Scraping
+#| echo: true
+
+# Start with a clean plate and lean loading to save memory
+
+gc(reset=T)
+
+library(purrr)
+library(magrittr) # Alternatively, load tidyverse
+
+## Set path for reading the listing and home directory
+## For Windows, use "c:\\directory\\subdirectory\\"
+## For Mac, "/Users/YOURNAME/path/"
+
+setwd("/Users/monicacampos/Library/CloudStorage/OneDrive-TheUniversityofTexasatDallas/Github Website")
+library(rjson)
+library(jsonlite)
+library(data.table)
+library(readr)
+
+## JSON method
+### rjson
+fa_list <- rjson::fromJSON(file ="govinfo-search-results-2025-10-16T19_53_25.json")
+govfilefa=dplyr::bind_rows(fa_list$resultSet)
+
+
+### Extract the list
+govfilefa <- fa_list$resultSet
+
+### One more step
+govfilefa <- fa_list$resultSet |> dplyr::bind_rows()
+
+
+# Preparing for bulk download of government documents
+govfilefa$id = govfilefa$packageId
+pdf_govfilefa_url <- govfilefa$pdfLink
+pdf_govfilefa_id <- govfilefa$index
+
+valid_indices <- !is.na(pdf_govfiles_url) & pdf_govfiles_url != ""
+pdf_govfilefa_url <- pdf_govfiles_url[valid_indices]
+pdf_govfilefa_id <- pdf_govfiles_id[valid_indices]
+
+message(sprintf("Found %d valid PDF links to download", length(pdf_govfiles_url)))
+
+
+# Directory to save the pdf's
+# Be sure to create a folder for storing the pdf's
+save_dir <- "/Users/monicacampos/Library/CloudStorage/OneDrive-TheUniversityofTexasatDallas/Github Website"
+
+# Function to download pdfs
+download_govfilesfa_pdf <- function(url, id) {
+  tryCatch({
+    destfile <- paste0(save_dir, "govfiles_", id, ".pdf")
+    download.file(url, destfile = destfile, mode = "wb") # Binary files
+    Sys.sleep(runif(1, 1, 3))  # Important: random sleep between 1 and 3 seconds to avoid suspicion of "hacking" the server
+    return(paste("Successfully downloaded:", url))
+  },
+  error = function(e) {
+    return(paste("Failed to download:", url))
+  })
+}
+
+# Download files, potentially in parallel for speed
+# Simple timer, can use package like tictoc
+# 
+
+## Try downloading one document
+start.time <- Sys.time()
+message("Starting downloads")
+results <- 1:1 %>% 
+  purrr::map_chr(~ download_govfilesfa_pdf(pdf_govfilefa_url[.], pdf_govfilefa_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+## Try five
+start.time <- Sys.time()
+message("Starting downloads")
+results <- 1:5 %>% 
+  purrr::map_chr(~ download_govfilesfa_pdf(pdf_govfilefa_url[.], pdf_govfilefa_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+
+# Try ten
+
+start.time <- Sys.time()
+message("Starting downloads")
+results <- 1:10 %>% 
+  purrr::map_chr(~ download_govfilesfa_pdf(pdf_govfilefa_url[.], pdf_govfilefa_id[.]))
+message("Finished downloads")
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+
+# Print results
+print(tenresults)
+```

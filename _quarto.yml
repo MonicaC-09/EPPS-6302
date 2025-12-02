@@ -1,0 +1,50 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "Methods and Data Collection"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: about.qmd
+        text: About
+      - text: Group Project
+        menu:
+          - href: TeamCamposGroupProject.qmd
+            text: Team Campos Proposal
+          - href: TeamCampos_ReproducibleCode.qmd
+            text: Team Campos Reproducible Code
+      - text: "EPPS 6356: Assignments"
+        menu:  
+          - href: Assignment1.qmd
+            text: Assignment One
+          - href: Assignment2.qmd
+            text: Assignment2 Google Trends Analysis
+          - href: AssignmentThree.qmd
+            text: Assignment3 Census Map
+          - href: Assignment4.qmd
+            text: Wiki GDP Scraping
+          - href: Assignment5.qmd
+            text: Government Data API
+          - href: Assignment6.qmd
+            text: Text Analytics Using Quanteda
+    right:
+      - href: https://github.com/MonicaC-09/EPPS-6302
+        text: Main Site
+  page-footer: 
+    right: "Built with [Quarto](https://quarto.org)"
+    left: "&copy; Copyright 2025, Monica Campos"
+
+format:
+  html:
+    theme: sandstone
+    mainfont: arial
+    fontsize: 1.5rem
+    linkcolor: "#ff33f0"
+    monofont: courier new
+    css: styles.css
+    toc: true
+
+editor: visual

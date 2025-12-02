@@ -1,0 +1,39 @@
+---
+title: "Assignment1"
+author: "Monica Campos"
+editor: visual
+---
+
+This Quarto project is my personal website, designed to serve as hub for my academic work from EPPS 6302: Methods of Data Collection and Production. It's primary purpose is to organize and present content related to the current course and my group project. The website is configured to provide a clean, modern, and user-friendly experience, with a clear navigation structure.
+
+Key Features and Structures:
+
+**Website Type:** My Quarto is configured as a website, generating multiple HTML pages linked together with a consistent navigation bar.
+
+**Navigation Bar:** The navigation bar is a central component, providing easy access to different sections of the site.
+
+**Left Side:**
+
+-   **Home:** Links to the main landing page of the site.
+
+-   **Group Project:** Has a drop down menu providing access to details about the "Upcoming" group project.
+
+-   **EPPS 6356: Assignments:** Has drop down menu organizing my coursework with a links to "Assignment One" and future assignments.
+
+**Right Side:**
+
+-   **Main Site:** a main site to my GitHub repository (https://github.com/MonicaC-09/EPPS-6302), serving as external reference to the "Main Site"
+
+**Footer:** provides important information at bottom. the Left Side will display my copyright notice and the Right Side it will credit Quarto as the platform used to build the site, with a link to Quarto website.
+
+**Styling and Formatting:**
+
+-   **Theme and Fonts:** The **sandstone** theme provides a warm, natural color palette. **Arial** is used for the main text, with a larger font size of **1.5rem** for enhanced readability. **Courier New** is used for code or monospaced text.
+
+-   **Link Color:** Links are given a vibrant **pinkish-purple color (`#ff33f0`)** to stand out.
+
+-   **Custom CSS:** An external stylesheet (`styles.css`) is included to allow for further customization beyond the built-in theme.
+
+-   **Table of Contents (`toc`):** A table of contents is automatically generated for each page, helping visitors navigate long-form content.
+
+**Editor:** The project is configured for **visual** editing, which provides a user-friendly, what-you-see-is-what-you-get (WYSIWYG) interface within the IDE.
