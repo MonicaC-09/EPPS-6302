@@ -4,9 +4,7 @@
 .Ruserdata
 /.quarto/
 .httr-oauth
-YouTubenews01.R
-YouTubeAPI01.R
 client_secret_*.json
-YouTubenews01.R
 YouTubeAPI01.R
+YouTubenews01.R
 client_secret_*.json
